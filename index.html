@@ -1,1 +1,442 @@
 
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Natural Photo AI</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, "Noto Sans JP", sans-serif;
+      background: #f7f5ff;
+      color: #333;
+    }
+
+    .app {
+      max-width: 430px;
+      min-height: 100vh;
+      margin: auto;
+      background: white;
+      overflow: hidden;
+    }
+
+    header {
+      background: linear-gradient(135deg, #8b5cf6, #ec4899);
+      color: white;
+      padding: 25px 20px;
+      text-align: center;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 26px;
+    }
+
+    header p {
+      margin: 8px 0 0;
+      font-size: 14px;
+    }
+
+    .screen {
+      display: none;
+      padding: 25px 20px;
+    }
+
+    .screen.active {
+      display: block;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    .goal {
+      width: 100%;
+      border: none;
+      background: #f3f0ff;
+      padding: 18px;
+      margin: 8px 0;
+      border-radius: 15px;
+      font-size: 16px;
+      text-align: left;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .goal:hover {
+      background: #e5ddff;
+      transform: translateY(-2px);
+    }
+
+    .camera-container {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 3 / 4;
+      background: #222;
+      border-radius: 20px;
+      overflow: hidden;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .advice {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      right: 15px;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 15px;
+      border-radius: 15px;
+      text-align: center;
+      font-size: 15px;
+    }
+
+    .status {
+      margin-top: 15px;
+      padding: 12px;
+      border-radius: 12px;
+      text-align: center;
+      background: #fff3cd;
+    }
+
+    .capture {
+      display: block;
+      margin: 20px auto 0;
+      width: 75px;
+      height: 75px;
+      border-radius: 50%;
+      border: 8px solid #eee;
+      background: #ff4f81;
+      cursor: pointer;
+    }
+
+    .capture:hover {
+      background: #e83e70;
+    }
+
+    canvas {
+      width: 100%;
+      border-radius: 20px;
+      display: none;
+    }
+
+    .result {
+      text-align: center;
+    }
+
+    .result img {
+      max-width: 100%;
+      border-radius: 20px;
+      margin-top: 15px;
+    }
+
+    .button {
+      width: 100%;
+      padding: 15px;
+      border: none;
+      border-radius: 15px;
+      background: #8b5cf6;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 15px;
+    }
+
+    .button:hover {
+      background: #7044d8;
+    }
+
+    .small {
+      text-align: center;
+      color: #777;
+      font-size: 13px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="app">
+
+  <header>
+    <h1>✨ Natural Photo AI</h1>
+    <p>加工ではなく、撮り方を変える</p>
+  </header>
+
+  <!-- HOME -->
+  <section id="home" class="screen active">
+
+    <h2>どんな写真にしたいですか？</h2>
+
+    <button class="goal" onclick="selectGoal('二重あごを目立たせたくない')">
+      😊 二重あごを目立たせたくない
+    </button>
+
+    <button class="goal" onclick="selectGoal('顔を小さく見せたい')">
+      ✨ 顔を小さく見せたい
+    </button>
+
+    <button class="goal" onclick="selectGoal('体をすっきり見せたい')">
+      👗 体をすっきり見せたい
+    </button>
+
+    <button class="goal" onclick="selectGoal('足を長く見せたい')">
+      👟 足を長く見せたい
+    </button>
+
+    <button class="goal" onclick="selectGoal('自然にきれいに撮りたい')">
+      📸 自然にきれいに撮りたい
+    </button>
+
+    <p class="small">
+      AIがあなたに合った撮影方法を提案します。
+    </p>
+
+  </section>
+
+
+  <!-- CAMERA -->
+  <section id="cameraScreen" class="screen">
+
+    <h2 id="selectedGoal"></h2>
+
+    <div class="camera-container">
+
+      <video id="video" autoplay playsinline></video>
+
+      <div class="advice" id="advice">
+        カメラを準備しています...
+      </div>
+
+    </div>
+
+    <div class="status" id="status">
+      🟡 まずはカメラの位置を調整してください
+    </div>
+
+    <button class="capture" onclick="takePhoto()"></button>
+
+    <button class="button" onclick="goHome()">
+      ← 戻る
+    </button>
+
+  </section>
+
+
+  <!-- RESULT -->
+  <section id="resultScreen" class="screen">
+
+    <h2>📸 写真が完成しました！</h2>
+
+    <div class="result">
+
+      <canvas id="canvas"></canvas>
+
+      <p>
+        自然な角度で撮影できました。
+      </p>
+
+      <button class="button" onclick="downloadPhoto()">
+        写真を保存する
+      </button>
+
+      <button class="button" onclick="goHome()">
+        もう一度撮影する
+      </button>
+
+    </div>
+
+  </section>
+
+</div>
+
+
+<script>
+
+  let currentGoal = "";
+
+  const video = document.getElementById("video");
+  const canvas = document.getElementById("canvas");
+
+
+  // 目的を選択
+  function selectGoal(goal) {
+
+    currentGoal = goal;
+
+    document.getElementById("home").classList.remove("active");
+    document.getElementById("cameraScreen").classList.add("active");
+
+    document.getElementById("selectedGoal").innerText =
+      "目標： " + goal;
+
+    startCamera();
+
+    giveAdvice(goal);
+  }
+
+
+  // カメラを起動
+  async function startCamera() {
+
+    try {
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "user"
+        },
+        audio: false
+      });
+
+      video.srcObject = stream;
+
+    } catch (error) {
+
+      document.getElementById("advice").innerText =
+        "カメラを使用できません。カメラのアクセスを許可してください。";
+
+    }
+
+  }
+
+
+  // 撮影アドバイス
+  function giveAdvice(goal) {
+
+    const advice = document.getElementById("advice");
+    const status = document.getElementById("status");
+
+    if (goal === "二重あごを目立たせたくない") {
+
+      advice.innerText =
+        "📷 カメラを少し高くして、顔を少し前に出してください。";
+
+      status.innerText =
+        "🟡 顔の角度を少し調整してください";
+
+    }
+
+    else if (goal === "顔を小さく見せたい") {
+
+      advice.innerText =
+        "✨ カメラから少し離れて、顔を少し斜めにしてください。";
+
+      status.innerText =
+        "🟡 もう少しカメラから離れてください";
+
+    }
+
+    else if (goal === "体をすっきり見せたい") {
+
+      advice.innerText =
+        "👗 体を少し斜めにして、カメラとの距離を少し広げてください。";
+
+      status.innerText =
+        "🟡 体を少し斜めにしてください";
+
+    }
+
+    else if (goal === "足を長く見せたい") {
+
+      advice.innerText =
+        "👟 カメラを少し低くして、少し離れた場所から撮影してください。";
+
+      status.innerText =
+        "🟡 カメラを少し低くしてください";
+
+    }
+
+    else {
+
+      advice.innerText =
+        "📸 自然な姿勢で、カメラを目の高さに合わせてください。";
+
+      status.innerText =
+        "🟢 自然な角度です！";
+
+    }
+
+  }
+
+
+  // 写真を撮る
+  function takePhoto() {
+
+    const context = canvas.getContext("2d");
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    context.drawImage(
+      video,
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+    // カメラを停止
+    if (video.srcObject) {
+
+      video.srcObject.getTracks().forEach(track => {
+        track.stop();
+      });
+
+    }
+
+    document.getElementById("cameraScreen").classList.remove("active");
+    document.getElementById("resultScreen").classList.add("active");
+
+    canvas.style.display = "block";
+
+  }
+
+
+  // 写真を保存
+  function downloadPhoto() {
+
+    const link = document.createElement("a");
+
+    link.download = "natural-photo.png";
+
+    link.href = canvas.toDataURL("image/png");
+
+    link.click();
+
+  }
+
+
+  // ホームに戻る
+  function goHome() {
+
+    if (video.srcObject) {
+
+      video.srcObject.getTracks().forEach(track => {
+        track.stop();
+      });
+
+    }
+
+    document.getElementById("cameraScreen").classList.remove("active");
+    document.getElementById("resultScreen").classList.remove("active");
+    document.getElementById("home").classList.add("active");
+
+  }
+
+</script>
+
+</body>
+</html>
