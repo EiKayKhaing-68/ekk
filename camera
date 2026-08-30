@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI撮影アドバイス・カメラ</title>
+    <style>
+        :root {
+            --primary: #00ea7f;
+            --bg: #000;
+        }
+        body {
+            margin: 0;
+            font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+            background-color: var(--bg);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* カメラプレビュー */
+        #camera-container {
+            position: relative;
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* AIアドバイスのオーバーレイ */
+        #overlay {
+            position: absolute;
+            top: 20px;
+            left: 15px;
+            right: 15px;
+            pointer-events: none;
+        }
+        .advice-card {
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            border-left: 5px solid var(--primary);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
+        .status-badge {
+            display: inline-block;
+            background: var(--primary);
+            color: black;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.75rem;
+            margin-bottom: 8px;
+        }
+        #advice-text {
+            font-size: 1.1rem;
+            font-weight: bold;
+            line-height: 1.4;
+        }
+
+        /* 操作パネル */
+        #controls {
+            background: white;
+            color: black;
+            padding: 20px 20px 40px 20px;
+            border-radius: 24px 24px 0 0;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+        select {
+            flex-grow: 1;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid #ddd;
+            font-size: 1rem;
+            background: #f8f8f8;
+        }
+        .flip-btn {
+            background: #eee;
+            border: none;
+            padding: 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+
+        /* シャッターエリア */
+        .shutter-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 10px;
+        }
+        .shutter-btn {
+            width: 75px;
+            height: 75px;
+            background: white;
+            border: 5px solid #ddd;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            outline: none;
+        }
+        .shutter-inner {
+            width: 55px;
+            height: 55px;
+            background: #333;
+            border-radius: 50%;
+            transition: transform 0.1s;
+        }
+        .shutter-btn:active .shutter-inner {
+            transform: scale(0.9);
+            background: #555;
+        }
+
+        /* 撮影用隠しキャンバス */
+        canvas { display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="camera-container">
+        <video id="webcam" autoplay playsinline></video>
+        
+        <div id="overlay">
+            <div id="advice-box" class="advice-card">
+                <div class="status-badge" id="status">AI 分析中...</div>
+                <div id="advice-text">モードを選択して撮影を始めましょう</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="controls">
+        <div class="setting-row">
+            <select id="goal-select" onchange="updateAdvice()">
+                <option value="none">📸 撮影モードを選択</option>
+                <option value="chin">二重あごを目立たせない</option>
+                <option value="slim">−5kg見えモード</option>
+                <option value="legs">足を長く見せる</option>
+                <option value="face">最強の小顔効果</option>
+            </select>
+            <button class="flip-btn" onclick="toggleCamera()">🔄</button>
+        </div>
+
+        <div class="shutter-container">
+            <button class="shutter-btn" onclick="takePhoto()">
+                <div class="shutter-inner"></div>
+            </button>
+        </div>
+    </div>
+
+    <canvas id="capture-canvas"></canvas>
+
+    <script>
+        const video = document.getElementById('webcam');
+        const adviceText = document.getElementById('advice-text');
+        const statusBadge = document.getElementById('status');
+        const canvas = document.getElementById('capture-canvas');
+        
+        let currentStream = null;
+        let useFrontCamera = true;
+
+        // カメラ起動
+        async function initCamera() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+            }
+
+            const constraints = {
+                video: {
+                    facingMode: useFrontCamera ? "user" : "environment",
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
+            };
+
+            try {
+                currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = currentStream;
+            } catch (err) {
+                adviceText.innerHTML = "カメラにアクセスできません。設定を確認してください。";
+            }
+        }
+
+        // カメラ切り替え（内・外）
+        function toggleCamera() {
+            useFrontCamera = !useFrontCamera;
+            initCamera();
+        }
+
+        // アドバイスのデータセット
+        const adviceDatabase = {
+            chin: [
+                "⬆️ カメラを 5cm 上げてください",
+                "👤 あごを少し前に出してください",
+                "🟢 おすすめの角度です！そのままキープ！"
+            ],
+            slim: [
+                "↗️ 体を少し右（斜め30度）に向けて",
+                "🤳 スマホを目の高さで固定して",
+                "✅ 完璧！その角度が一番スッキリ見えます"
+            ],
+            legs: [
+                "⬇️ カメラを腰の高さまで下げて",
+                "📱 スマホを少し手前に傾けてください",
+                "✨ 片足を前に出すとさらに長く見えます！"
+            ],
+            face: [
+                "🤳 カメラを少し斜め上にかざして",
+                "📐 顔を少し左に傾けてください",
+                "🟢 最高です！今の角度が一番小顔です"
+            ]
+        };
+
+        let step = 0;
+        let currentGoal = "none";
+        let timer = null;
+
+        function updateAdvice() {
+            clearTimeout(timer);
+            currentGoal = document.getElementById('goal-select').value;
+            step = 0;
+            
+            if (currentGoal === "none") {
+                adviceText.innerHTML = "モードを選択して撮影を始めましょう";
+                statusBadge.innerHTML = "AI 待機中";
+                statusBadge.style.background = "#aaa";
+                return;
+            }
+            showNextStep();
+        }
+
+        function showNextStep() {
+            const lines = adviceDatabase[currentGoal];
+            if (step < lines.length) {
+                adviceText.innerHTML = lines[step];
+                statusBadge.innerHTML = "AI アドバイス";
+                statusBadge.style.background = "#00ea7f";
+                
+                step++;
+                // 3秒ごとにアドバイスが進む（AIが動きを検知したフリ）
+                timer = setTimeout(showNextStep, 3000); 
+            } else {
+                statusBadge.innerHTML = "ベスト角度！";
+                statusBadge.style.background = "#00c3ff";
+            }
+        }
+
+        // 写真撮影
+        function takePhoto() {
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            // ビデオの現在のフレームをキャンバスに描画
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // 画像をダウンロード
+            const link = document.createElement('a');
+            link.download = `AI_Photo_${new Date().getTime()}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+
+            // 視覚的フィードバック（フラッシュ）
+            video.style.opacity = "0";
+            setTimeout(() => video.style.opacity = "1", 100);
+        }
+
+        // 起動時にカメラ開始
+        initCamera();
+    </script>
+</body>
+</html>
