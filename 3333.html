@@ -1,174 +1,442 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI Camera & Gallery</title>
-    <style>
-        :root { --primary: #00ea7f; --bg: #000; }
-        body {
-            margin: 0; font-family: sans-serif; background: var(--bg); color: white;
-            display: flex; flex-direction: column; height: 100vh; overflow: hidden;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Natural Photo AI</title>
 
-        /* Viewer (Camera or Uploaded Image) */
-        #viewer-container {
-            position: relative; flex-grow: 1; display: flex; justify-content: center; align-items: center; background: #111;
-        }
-        video, #preview-img {
-            width: 100%; height: 100%; object-fit: cover; position: absolute;
-        }
-        #preview-img { display: none; } /* Hidden until a photo is picked */
+  <style>
+    * {
+      box-sizing: border-box;
+    }
 
-        /* Overlay */
-        #overlay { position: absolute; top: 20px; left: 15px; right: 15px; pointer-events: none; z-index: 10; }
-        .advice-card {
-            background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(10px);
-            border-left: 5px solid var(--primary); padding: 15px; border-radius: 12px;
-        }
-        .status-badge {
-            display: inline-block; background: var(--primary); color: black;
-            padding: 3px 10px; border-radius: 20px; font-weight: bold; font-size: 0.75rem; margin-bottom: 8px;
-        }
+    body {
+      margin: 0;
+      font-family: Arial, "Noto Sans JP", sans-serif;
+      background: #f7f5ff;
+      color: #333;
+    }
 
-        /* Controls */
-        #controls {
-            background: white; color: black; padding: 20px 20px 40px 20px;
-            border-radius: 24px 24px 0 0; display: flex; flex-direction: column; gap: 15px; z-index: 20;
-        }
-        .btn-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-        select { flex-grow: 1; padding: 12px; border-radius: 10px; border: 1px solid #ddd; }
-        
-        .icon-btn {
-            background: #eee; border: none; padding: 10px; border-radius: 10px; cursor: pointer; font-size: 1.2rem;
-        }
+    .app {
+      max-width: 430px;
+      min-height: 100vh;
+      margin: auto;
+      background: white;
+      overflow: hidden;
+    }
 
-        .shutter-row { display: flex; justify-content: space-around; align-items: center; width: 100%; }
-        .shutter-btn {
-            width: 70px; height: 70px; background: white; border: 5px solid #ddd; border-radius: 50%;
-        }
-        .shutter-inner { width: 50px; height: 50px; background: #333; border-radius: 50%; margin: 5px auto; }
+    header {
+      background: linear-gradient(135deg, #8b5cf6, #ec4899);
+      color: white;
+      padding: 25px 20px;
+      text-align: center;
+    }
 
-        /* Hidden File Input */
-        #file-input { display: none; }
-    </style>
+    header h1 {
+      margin: 0;
+      font-size: 26px;
+    }
+
+    header p {
+      margin: 8px 0 0;
+      font-size: 14px;
+    }
+
+    .screen {
+      display: none;
+      padding: 25px 20px;
+    }
+
+    .screen.active {
+      display: block;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    .goal {
+      width: 100%;
+      border: none;
+      background: #f3f0ff;
+      padding: 18px;
+      margin: 8px 0;
+      border-radius: 15px;
+      font-size: 16px;
+      text-align: left;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .goal:hover {
+      background: #e5ddff;
+      transform: translateY(-2px);
+    }
+
+    .camera-container {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 3 / 4;
+      background: #222;
+      border-radius: 20px;
+      overflow: hidden;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .advice {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      right: 15px;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 15px;
+      border-radius: 15px;
+      text-align: center;
+      font-size: 15px;
+    }
+
+    .status {
+      margin-top: 15px;
+      padding: 12px;
+      border-radius: 12px;
+      text-align: center;
+      background: #fff3cd;
+    }
+
+    .capture {
+      display: block;
+      margin: 20px auto 0;
+      width: 75px;
+      height: 75px;
+      border-radius: 50%;
+      border: 8px solid #eee;
+      background: #ff4f81;
+      cursor: pointer;
+    }
+
+    .capture:hover {
+      background: #e83e70;
+    }
+
+    canvas {
+      width: 100%;
+      border-radius: 20px;
+      display: none;
+    }
+
+    .result {
+      text-align: center;
+    }
+
+    .result img {
+      max-width: 100%;
+      border-radius: 20px;
+      margin-top: 15px;
+    }
+
+    .button {
+      width: 100%;
+      padding: 15px;
+      border: none;
+      border-radius: 15px;
+      background: #8b5cf6;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 15px;
+    }
+
+    .button:hover {
+      background: #7044d8;
+    }
+
+    .small {
+      text-align: center;
+      color: #777;
+      font-size: 13px;
+      margin-top: 20px;
+    }
+  </style>
 </head>
+
 <body>
 
-    <div id="viewer-container">
-        <video id="webcam" autoplay playsinline></video>
-        <img id="preview-img" alt="Preview">
-        
-        <div id="overlay">
-            <div class="advice-card">
-                <div class="status-badge" id="status">AI 待機中</div>
-                <div id="advice-text">モードを選択してください</div>
-            </div>
-        </div>
+<div class="app">
+
+  <header>
+    <h1>✨ Natural Photo AI</h1>
+    <p>加工ではなく、撮り方を変える</p>
+  </header>
+
+  <!-- HOME -->
+  <section id="home" class="screen active">
+
+    <h2>どんな写真にしたいですか？</h2>
+
+    <button class="goal" onclick="selectGoal('二重あごを目立たせたくない')">
+      😊 二重あごを目立たせたくない
+    </button>
+
+    <button class="goal" onclick="selectGoal('顔を小さく見せたい')">
+      ✨ 顔を小さく見せたい
+    </button>
+
+    <button class="goal" onclick="selectGoal('体をすっきり見せたい')">
+      👗 体をすっきり見せたい
+    </button>
+
+    <button class="goal" onclick="selectGoal('足を長く見せたい')">
+      👟 足を長く見せたい
+    </button>
+
+    <button class="goal" onclick="selectGoal('自然にきれいに撮りたい')">
+      📸 自然にきれいに撮りたい
+    </button>
+
+    <p class="small">
+      AIがあなたに合った撮影方法を提案します。
+    </p>
+
+  </section>
+
+
+  <!-- CAMERA -->
+  <section id="cameraScreen" class="screen">
+
+    <h2 id="selectedGoal"></h2>
+
+    <div class="camera-container">
+
+      <video id="video" autoplay playsinline></video>
+
+      <div class="advice" id="advice">
+        カメラを準備しています...
+      </div>
+
     </div>
 
-    <div id="controls">
-        <div class="btn-row">
-            <select id="goal-select" onchange="updateAdvice()">
-                <option value="none">📸 モード選択</option>
-                <option value="chin">二重あご解消</option>
-                <option value="slim">−5kg見え効果</option>
-                <option value="legs">足長効果</option>
-            </select>
-            <button class="icon-btn" onclick="toggleCamera()">🔄</button>
-        </div>
-
-        <div class="shutter-row">
-            <!-- Gallery Button -->
-            <button class="icon-btn" onclick="document.getElementById('file-input').click()">🖼️ アルバム</button>
-            
-            <!-- Shutter Button -->
-            <button class="shutter-btn" onclick="takePhoto()">
-                <div class="shutter-inner"></div>
-            </button>
-
-            <!-- Reset to Live Camera -->
-            <button class="icon-btn" onclick="resetToCamera()">📷 カメラ</button>
-        </div>
+    <div class="status" id="status">
+      🟡 まずはカメラの位置を調整してください
     </div>
 
-    <!-- HTML Hidden input to trigger Camera Roll -->
-    <input type="file" id="file-input" accept="image/*" onchange="loadPhoto(event)">
-    <canvas id="capture-canvas" style="display:none;"></canvas>
+    <button class="capture" onclick="takePhoto()"></button>
 
-    <script>
-        const video = document.getElementById('webcam');
-        const previewImg = document.getElementById('preview-img');
-        const adviceText = document.getElementById('advice-text');
-        const statusBadge = document.getElementById('status');
-        
-        let useFrontCamera = true;
+    <button class="button" onclick="goHome()">
+      ← 戻る
+    </button>
 
-        // 1. Start Camera
-        async function initCamera() {
-            previewImg.style.display = 'none';
-            video.style.display = 'block';
-            const constraints = { video: { facingMode: useFrontCamera ? "user" : "environment" } };
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                video.srcObject = stream;
-            } catch (err) { alert("カメラエラー"); }
-        }
+  </section>
 
-        // 2. Load from Camera Roll
-        function loadPhoto(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    video.style.display = 'none';
-                    previewImg.src = e.target.result;
-                    previewImg.style.display = 'block';
-                    adviceText.innerHTML = "写真を取り込みました。この写真のアドバイスを表示します...";
-                };
-                reader.readAsDataURL(file);
-            }
-        }
 
-        function resetToCamera() {
-            initCamera();
-        }
+  <!-- RESULT -->
+  <section id="resultScreen" class="screen">
 
-        function toggleCamera() {
-            useFrontCamera = !useFrontCamera;
-            initCamera();
-        }
+    <h2>📸 写真が完成しました！</h2>
 
-        // --- AI Advice Logic ---
-        const adviceDatabase = {
-            chin: ["カメラを少し高く...", "あごを引いて...", "ベストショット！"],
-            slim: ["斜めに立って...", "肩を下げて...", "スッキリ見えます！"],
-            legs: ["カメラを低く...", "つま先を前に...", "足長効果MAX！"]
-        };
+    <div class="result">
 
-        function updateAdvice() {
-            let goal = document.getElementById('goal-select').value;
-            if (goal === "none") return;
-            let step = 0;
-            statusBadge.style.background = "#00ea7f";
-            statusBadge.innerText = "AI 分析中";
-            
-            const interval = setInterval(() => {
-                adviceText.innerText = adviceDatabase[goal][step];
-                step++;
-                if (step >= adviceDatabase[goal].length) {
-                    clearInterval(interval);
-                    statusBadge.innerText = "完了";
-                    statusBadge.style.background = "#00c3ff";
-                }
-            }, 2000);
-        }
+      <canvas id="canvas"></canvas>
 
-        function takePhoto() {
-            alert("写真を保存しました！");
-        }
+      <p>
+        自然な角度で撮影できました。
+      </p>
 
-        initCamera();
-    </script>
+      <button class="button" onclick="downloadPhoto()">
+        写真を保存する
+      </button>
+
+      <button class="button" onclick="goHome()">
+        もう一度撮影する
+      </button>
+
+    </div>
+
+  </section>
+
+</div>
+
+
+<script>
+
+  let currentGoal = "";
+
+  const video = document.getElementById("video");
+  const canvas = document.getElementById("canvas");
+
+
+  // 目的を選択
+  function selectGoal(goal) {
+
+    currentGoal = goal;
+
+    document.getElementById("home").classList.remove("active");
+    document.getElementById("cameraScreen").classList.add("active");
+
+    document.getElementById("selectedGoal").innerText =
+      "目標： " + goal;
+
+    startCamera();
+
+    giveAdvice(goal);
+  }
+
+
+  // カメラを起動
+  async function startCamera() {
+
+    try {
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "user"
+        },
+        audio: false
+      });
+
+      video.srcObject = stream;
+
+    } catch (error) {
+
+      document.getElementById("advice").innerText =
+        "カメラを使用できません。カメラのアクセスを許可してください。";
+
+    }
+
+  }
+
+
+  // 撮影アドバイス
+  function giveAdvice(goal) {
+
+    const advice = document.getElementById("advice");
+    const status = document.getElementById("status");
+
+    if (goal === "二重あごを目立たせたくない") {
+
+      advice.innerText =
+        "📷 カメラを少し高くして、顔を少し前に出してください。";
+
+      status.innerText =
+        "🟡 顔の角度を少し調整してください";
+
+    }
+
+    else if (goal === "顔を小さく見せたい") {
+
+      advice.innerText =
+        "✨ カメラから少し離れて、顔を少し斜めにしてください。";
+
+      status.innerText =
+        "🟡 もう少しカメラから離れてください";
+
+    }
+
+    else if (goal === "体をすっきり見せたい") {
+
+      advice.innerText =
+        "👗 体を少し斜めにして、カメラとの距離を少し広げてください。";
+
+      status.innerText =
+        "🟡 体を少し斜めにしてください";
+
+    }
+
+    else if (goal === "足を長く見せたい") {
+
+      advice.innerText =
+        "👟 カメラを少し低くして、少し離れた場所から撮影してください。";
+
+      status.innerText =
+        "🟡 カメラを少し低くしてください";
+
+    }
+
+    else {
+
+      advice.innerText =
+        "📸 自然な姿勢で、カメラを目の高さに合わせてください。";
+
+      status.innerText =
+        "🟢 自然な角度です！";
+
+    }
+
+  }
+
+
+  // 写真を撮る
+  function takePhoto() {
+
+    const context = canvas.getContext("2d");
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    context.drawImage(
+      video,
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+    // カメラを停止
+    if (video.srcObject) {
+
+      video.srcObject.getTracks().forEach(track => {
+        track.stop();
+      });
+
+    }
+
+    document.getElementById("cameraScreen").classList.remove("active");
+    document.getElementById("resultScreen").classList.add("active");
+
+    canvas.style.display = "block";
+
+  }
+
+
+  // 写真を保存
+  function downloadPhoto() {
+
+    const link = document.createElement("a");
+
+    link.download = "natural-photo.png";
+
+    link.href = canvas.toDataURL("image/png");
+
+    link.click();
+
+  }
+
+
+  // ホームに戻る
+  function goHome() {
+
+    if (video.srcObject) {
+
+      video.srcObject.getTracks().forEach(track => {
+        track.stop();
+      });
+
+    }
+
+    document.getElementById("cameraScreen").classList.remove("active");
+    document.getElementById("resultScreen").classList.remove("active");
+    document.getElementById("home").classList.add("active");
+
+  }
+
+</script>
+
 </body>
 </html>
+
