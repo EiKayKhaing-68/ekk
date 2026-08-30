@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Camera Advice Prototype</title>
+    <style>
+        :root {
+            --primary: #00ea7f;
+            --bg: #121212;
+        }
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+        /* Camera Container */
+        #camera-container {
+            position: relative;
+            flex-grow: 1;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        /* AI Overlay */
+        #overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            pointer-events: none;
+        }
+        .advice-card {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            border-left: 4px solid var(--primary);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            animation: slideIn 0.5s ease-out;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(-20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .status-badge {
+            display: inline-block;
+            background: var(--primary);
+            color: black;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.8rem;
+            margin-bottom: 8px;
+        }
+        /* Bottom Controls */
+        #controls {
+            background: white;
+            color: black;
+            padding: 20px;
+            border-radius: 24px 24px 0 0;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        select {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid #ddd;
+            font-size: 1rem;
+        }
+        .shutter-btn {
+            width: 70px;
+            height: 70px;
+            background: white;
+            border: 5px solid #ddd;
+            border-radius: 50%;
+            margin: 0 auto;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .shutter-inner {
+            width: 50px;
+            height: 50px;
+            background: #333;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="camera-container">
+        <video id="webcam" autoplay playsinline></video>
+        
+        <div id="overlay">
+            <div id="advice-box" class="advice-card">
+                <div class="status-badge">AI ANALYZING</div>
+                <div id="advice-text">Select a goal to start receiving AI posing advice...</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="controls">
+        <label style="font-weight: bold; font-size: 0.9rem;">WHAT IS YOUR GOAL?</label>
+        <select id="goal-select" onchange="updateAdvice()">
+            <option value="none">-- Select a Mode --</option>
+            <option value="chin">Hide Double Chin (二重あご解消)</option>
+            <option value="slim">-5kg Effect (全身すっきり)</option>
+            <option value="legs">Longer Legs (足長効果)</option>
+            <option value="face">Smaller Face (小顔効果)</option>
+        </select>
+
+        <div class="shutter-btn" onclick="takePhoto()">
+            <div class="shutter-inner"></div>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('webcam');
+        const adviceText = document.getElementById('advice-text');
+        const badge = document.querySelector('.status-badge');
+
+        // Start Camera
+        async function initCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                video.srcObject = stream;
+            } catch (err) {
+                adviceText.innerHTML = "Camera error: Please allow camera access.";
+            }
+        }
+
+        const adviceDatabase = {
+            chin: [
+                "⬆️ Raise camera 5cm higher",
+                "👤 Push your chin slightly forward",
+                "✅ Perfect! Angle is now optimal."
+            ],
+            slim: [
+                "↗️ Turn your body 30 degrees right",
+                "🤳 Hold camera at eye level",
+                "🟢 Good! Shift your weight to the back leg."
+            ],
+            legs: [
+                "⬇️ Lower the camera to waist height",
+                "📱 Tilt the phone slightly towards you",
+                "✨ Put one foot forward!"
+            ],
+            face: [
+                "🤳 Tilt the camera down slightly",
+                "📐 Turn your face 15 degrees left",
+                "✅ Better lighting detected."
+            ]
+        };
+
+        let step = 0;
+        let currentGoal = "none";
+
+        function updateAdvice() {
+            currentGoal = document.getElementById('goal-select').value;
+            step = 0;
+            if (currentGoal === "none") {
+                adviceText.innerHTML = "Select a goal to start...";
+                badge.style.background = "#aaa";
+                return;
+            }
+            showNextStep();
+        }
+
+        function showNextStep() {
+            const lines = adviceDatabase[currentGoal];
+            if (step < lines.length) {
+                adviceText.innerHTML = lines[step];
+                badge.innerHTML = "AI ADVICE";
+                badge.style.background = "#00ea7f";
+                
+                // Simulate "AI detecting your movement"
+                step++;
+                setTimeout(showNextStep, 3000); 
+            } else {
+                badge.innerHTML = "READY / OPTIMAL";
+                badge.style.background = "#00c3ff";
+            }
+        }
+
+        function takePhoto() {
+            alert("Photo captured with AI optimization!");
+        }
+
+        initCamera();
+    </script>
+</body>
+</html>
